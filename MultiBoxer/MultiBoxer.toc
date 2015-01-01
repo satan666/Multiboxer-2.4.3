@@ -1,0 +1,12 @@
+## Interface: 20400
+## Title: MultiBoxer v2 - 0.5
+## Version: 0.5
+## Author: smurfy
+## SavedVariables: smMultiBoxerDB
+## OptionalDeps: LibRock-1.0
+## Notes: A Collection of Multiboxing utilties
+
+#libs
+embeds.xml
+
+MultiBoxer.lua
