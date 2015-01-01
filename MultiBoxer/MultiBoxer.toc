@@ -10,3 +10,4 @@
 embeds.xml
 
 MultiBoxer.lua
+Multiboxer_Functions.lua

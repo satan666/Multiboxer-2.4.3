@@ -1,5 +1,7 @@
 local media = LibStub("LibSharedMedia-2.0")
 local tmpTaxiSlave = false
+local tmpMasterTaxiNode = false
+local tmpMasterTaxiNodeTimeSlot = 0
 local tmpSelectGossipAvailableQuestSlave = false
 local tmpAcceptQuestSlave = false
 local tmpSelectGossipOptionSlave = false
@@ -9,6 +11,8 @@ local tmpGetQuestRewardSlave = false
 local tmpSelectActiveQuestSlave = false
 local tmpSelectAvailableQuestSlave = false
 local tmpDeclineQuestSlave = false
+local tmpLogout = false
+local tmpCancelLogout = false
 
 smMultiBoxer = Rock:NewAddon("MultiBoxer",  "LibRockDB-1.0","LibRockEvent-1.0", "LibRockTimer-1.0","LibRockConfig-1.0","LibRockComm-1.0")
 local smMultiBoxer, self = smMultiBoxer, smMultiBoxer
@@ -110,6 +114,7 @@ local optionsTable_args = {
 					set =  function(v) self.db.profile.redirectwhispers = v end,
 					order = 1,
 				},
+				--[[
 				mywhispermaster = {
 					type = "string", 
 					name = "Defined Main used for whisper redirects",
@@ -118,7 +123,8 @@ local optionsTable_args = {
 					get = function() return self.db.profile.mywhispermaster end,
 					set =  function(v) self.db.profile.mywhispermaster = v end,
 					order = 2,
-				},		
+				},	
+				--]]
 				redirecttobroadcastonly = {
 					type = "toggle", 
 					name = "Send redirected whisper only as clickable version do not whisper to Main",
@@ -150,6 +156,7 @@ local optionsTable_args = {
 					set =  function(v) self.db.profile.autofollowtaxigossip = v end,
 					order = 1,
 				},						
+				--[[
 				myquestsharemaster = {
 					type = "string", 
 					name = "Defined Main used for Gossip share",
@@ -159,6 +166,7 @@ local optionsTable_args = {
 					set =  function(v) self.db.profile.myquestsharemaster = v end,
 					order = 2,
 				},
+				--]]
 		},
 	},
 	followsettings = {
@@ -168,12 +176,13 @@ local optionsTable_args = {
 		args = {	
 				autofollow = {
 					type = "toggle", 
-					name = "Automatic follow defined Leader after leaving Combat",
+					name = "Automatic follow Leader after leaving Combat",
 					desc = "After you leaves Combat, MultiBoxer trys to follow the defined Leader.",
 					get = function() return self.db.profile.autofollow end,
 					set =  function(v) self.db.profile.autofollow = v end,
 					order = 0,
 				},	
+				--[[
 				mymaster = {
 					type = "string", 
 					name = "Defined Leader used for Automatic follow",
@@ -182,7 +191,8 @@ local optionsTable_args = {
 					get = function() return self.db.profile.myleader end,
 					set =  function(v) self.db.profile.myleader = v end,
 					order = 1,
-				},			
+				},	
+				--]]
 				alertfollowproblems = {
 					type = "toggle", 
 					name = "Show Raidwarning if Slave can't follow you",
@@ -254,6 +264,23 @@ local optionsTable_args = {
 					set =  function(v) self.db.profile.allowinventoryrequest = v end,
 					order = 6,
 				},
+				synclogout = {
+					type = "toggle", 
+					name = "Sync logout with the leader",
+					desc = "Sync logout with the leader.",
+					get = function() return self.db.profile.release end,
+					set =  function(v) self.db.profile.release = v end,
+					order = 7,
+				},
+				syncrelease = {
+					type = "toggle", 
+					name = "Sync release spirit with the leader",
+					desc = "Sync release spirit with the leader.",
+					get = function() return self.db.profile.logout end,
+					set =  function(v) self.db.profile.logout = v end,
+					order = 8,
+				},
+				
 									
 		},
 	},
@@ -325,6 +352,8 @@ function smMultiBoxer:OnEnable()
 	self:AddEventListener("PLAYER_ENTERING_WORLD","CHAT_MSG_COMBAT_XP_GAIN")
 
 	self:AddEventListener("PLAYER_REGEN_ENABLED")
+	
+	self:AddEventListener("TAXIMAP_OPENED");
 
 	self:AddEventListener("UI_ERROR_MESSAGE")
 	self:AddEventListener("SYSMSG")
@@ -339,6 +368,11 @@ function smMultiBoxer:OnEnable()
 	self:AddEventListener("QUEST_ACCEPT_CONFIRM")
 			
 	hooksecurefunc("TakeTaxiNode",TakeTaxiNodeHook)
+	
+	hooksecurefunc("Logout",LogoutHook)	
+	hooksecurefunc("CancelLogout",CancelLogoutHook)
+	hooksecurefunc("RepopMe",RepopMeHook)
+	
 	
 	hooksecurefunc("SelectGossipOption",SelectGossipOptionHook)	
 	hooksecurefunc("SelectGossipActiveQuest",SelectGossipActiveQuestHook)
@@ -355,16 +389,16 @@ function smMultiBoxer:OnEnable()
 	self:AddCommListener("MultiBoxer", "GROUP")
 	self:AddCommListener("MultiBoxer", "WHISPER")
 
-	if (self.db.profile.myleader == nil) then
-		self.db.profile.myleader = "party1"
+	if (self.db.profile.repopme == nil) then
+		self.db.profile.repopme = true
 	end
 	
-	if (self.db.profile.mywhispermaster == nil) then
-		self.db.profile.mywhispermaster = "party1"
+	if (self.db.profile.logout == nil) then
+		self.db.profile.logout = true
 	end
 
-	if (self.db.profile.myquestsharemaster == nil) then
-		self.db.profile.myquestsharemaster = "party1"
+	if (self.db.profile.release == nil) then
+		self.db.profile.release = true
 	end	
 	
 	if (self.db.profile.texture == nil) then
@@ -384,6 +418,30 @@ end
 --[[
 	TakeTaxiNode
 ]]
+
+function RepopMeHook() 
+	if tmpRepopMe == false then
+		--DEFAULT_CHAT_FRAME:AddMessage("Hook Logout")
+		self:SendCommMessage("GROUP", "REPOPME")
+	end
+	tmpRepopMe = false	
+end
+
+function LogoutHook() 
+	if tmpLogout == false then
+		--DEFAULT_CHAT_FRAME:AddMessage("Hook Logout")
+		self:SendCommMessage("GROUP", "LOGOUT")
+	end
+	tmpLogout = false	
+end
+
+function CancelLogoutHook() 
+	if tmpCancelLogout == false then
+		self:SendCommMessage("GROUP", "CANCELLOGOUT")
+	end	
+	tmpCancelLogout = false
+end
+
 function TakeTaxiNodeHook(index) 
 	if (tmpTaxiSlave == false) then
 		local nodename = TaxiNodeName(index)
@@ -608,13 +666,34 @@ end
 ]]
 function smMultiBoxer:PLAYER_REGEN_ENABLED()
 	if (self.db.profile.autofollow) then
-		if ( CheckInteractDistance(self.db.profile.myleader, 4) ) then
-			FollowUnit(self.db.profile.myleader);
+		local leader = LazyMultibox_ReturnLeaderUnit()
+		if UnitIsUnit("player", leader) then return end
+		if ( CheckInteractDistance(leader, 4) ) then
+			FollowUnit(leader);
 		else
 			self:SendCommMessage("GROUP", "FOLLOWLOST","(Out of range)")
 		end
 	end
 end
+
+function smMultiBoxer:TAXIMAP_OPENED()
+	
+	local time = GetTime()
+	if not tmpMasterTaxiNode then return end
+
+	if tmpMasterTaxiNodeTimeSlot > time then
+		for i=1,NumTaxiNodes() do
+			if(TaxiNodeName(i) == tmpMasterTaxiNode) then
+				TakeTaxiNode(i)
+				break
+			end
+		end
+	end	
+
+	tmpMasterTaxiNodeTimeSlot = 0
+	tmpMasterTaxiNode = false
+end
+
 
 --[[
 	Automatic accept Invites if sender is in friendslist
@@ -656,9 +735,10 @@ function smMultiBoxer:CHAT_MSG_WHISPER()
 			msg = "Sent by ["..arg2.."]: "..arg1
 			cleanmsg = "|cff20ff20[|Hplayer:"..arg2..":"..arg11.."|h"..arg2.."|h] whispers: "..arg1
 		end
-		local rname = UnitName(self.db.profile.mywhispermaster);
+		local leader = LazyMultibox_ReturnLeaderUnit()
+		local rname = UnitName(leader);
 		if (rname == nil) then
-			rname = self.db.profile.mywhispermaster;
+			return
 		end
 		
 		self:SendCommMessage("GROUP", "REDIRECTWHISPER",cleanmsg)
@@ -674,18 +754,54 @@ end
 	============================================== ADDON CHANNEL COMMUNICATION  ================================================
 ]]
 
+function smMultiBoxer.OnCommReceive:REPOPME(prefix, distribution, sender)
+	if (sender == UnitName("player")) then return end
+	if not LazyMultibox_IsLeaderUnit(sender) then return end
+	
+	if (self.db.profile.repopme) then
+		tmpRepopMe = true
+		RepopMe()
+	end
+end
 
+function smMultiBoxer.OnCommReceive:LOGOUT(prefix, distribution, sender)
+	if (sender == UnitName("player")) then return end
+	if not LazyMultibox_IsLeaderUnit(sender) then return end
+	
+	if (self.db.profile.logout) then
+		tmpLogout = true
+		Logout()
+	end
+end
+
+function smMultiBoxer.OnCommReceive:CANCELLOGOUT(prefix, distribution, sender)
+	if (sender == UnitName("player")) then return end
+	if not LazyMultibox_IsLeaderUnit(sender) then return end
+	if (self.db.profile.logout) then
+		tmpCancelLogout = true
+		for i=1,STATICPOPUP_NUMDIALOGS do
+			local frame = getglobal("StaticPopup"..i)
+			if frame:IsShown() then
+				if frame.which == "CAMP"  then
+					getglobal("StaticPopup"..i.."Button1"):Click();
+				end
+			end
+		end
+	end
+end
 
 --[[
 	QuestShare
 ]]
-function smMultiBoxer.OnCommReceive:QUESTSHARE(prefix, distribution, sender, clickmethod,questid,questtitle)
+function smMultiBoxer.OnCommReceive:QUESTSHARE(prefix, distribution, sender)
 	if (sender == UnitName("player")) then return end
 	
 	if (self.db.profile.autofollowquestgossip) then
-		local rname = UnitName(self.db.profile.myquestsharemaster);
+		local leader = LazyMultibox_ReturnLeaderUnit()
+		local rname = UnitName(leader);
 		if (rname == nil) then
-			rname = self.db.profile.myquestsharemaster;
+			return
+			--rname = self.db.profile.myquestsharemaster;
 		end
 		
 		if (rname ~= sender) then return end
@@ -741,25 +857,23 @@ end
 	TakeTaxiNode
 ]]
 function smMultiBoxer.OnCommReceive:TAKETAXI(prefix, distribution, sender, nodeid,nodename)
+	--DEFAULT_CHAT_FRAME:AddMessage("Taxi saved1 "..nodename)
 	if (sender == UnitName("player")) then return end
+	if (nodename == nil) then return end
 	
+	--DEFAULT_CHAT_FRAME:AddMessage("Taxi saved2.4 ")
 	if (self.db.profile.autofollowtaxigossip) then
-		local rname = UnitName(self.db.profile.myquestsharemaster);
-		if (rname == nil) then
-			rname = self.db.profile.myquestsharemaster;
-		end
-		
+		local leader = LazyMultibox_ReturnLeaderUnit()
+		if not leader then end
+			
+		local rname = UnitName(leader);
 		if (rname ~= sender) then return end
-		
-		--self:DebugMsg("GotBroadcast "..nodeid.." : "..nodename)
-		local mynodename = TaxiNodeName(nodeid)
-		if (mynodename ~= nil) then
-			if (mynodename == nodename) then
-				--self:DebugMsg("Taking "..nodeid.." : "..nodename)
-				tmpTaxiSlave = true
-				TakeTaxiNode(nodeid)
-			end
-		end
+			
+		--DEFAULT_CHAT_FRAME:AddMessage("Taxi saved3 "..nodename)
+		tmpTaxiSlave = true
+		tmpMasterTaxiNode = nodename
+		tmpMasterTaxiNodeTimeSlot = GetTime() + 30
+
 	end
 end
 
