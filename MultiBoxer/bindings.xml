@@ -1,0 +1,4 @@
+<Bindings>
+	<Binding name="FOLLOWLEADER"  header="MULTIBOXER_HEADER">smMultiBoxer:FollowRequest()</Binding>
+
+</Bindings>

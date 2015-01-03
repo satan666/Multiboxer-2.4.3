@@ -17,6 +17,12 @@ local tmpRetrieveCorpse = false
 local tmpAcceptTrade = false
 local tmpRepopMe = false
 
+
+
+BINDING_HEADER_MULTIBOXER_HEADER = "Multiboxer";
+BINDING_NAME_FOLLOWLEADER = "Request Slave Follow";
+
+
 smMultiBoxer = Rock:NewAddon("MultiBoxer",  "LibRockDB-1.0","LibRockEvent-1.0", "LibRockTimer-1.0","LibRockConfig-1.0","LibRockComm-1.0")
 local smMultiBoxer, self = smMultiBoxer, smMultiBoxer
 
@@ -471,7 +477,7 @@ end
 
 function RepopMeHook() 
 	if tmpRepopMe == false then
-		DEFAULT_CHAT_FRAME:AddMessage("Hook RepopMeHook")
+		--DEFAULT_CHAT_FRAME:AddMessage("Hook RepopMeHook")
 		self:SendCommMessage("GROUP", "REPOPME")
 	end
 	tmpRepopMe = false	
@@ -715,15 +721,10 @@ end
 	Automatic Follow Leader after Combat ends
 ]]
 function smMultiBoxer:PLAYER_REGEN_ENABLED()
-	if (self.db.profile.autofollow) then
-		local leader = LazyMultibox_ReturnLeaderUnit()
-		if UnitIsUnit("player", leader) then return end
-		if ( CheckInteractDistance(leader, 4) ) then
-			FollowUnit(leader);
-		else
-			self:SendCommMessage("GROUP", "FOLLOWLOST","(Out of range)")
-		end
-	end
+	--local leader = LazyMultibox_ReturnLeaderUnit()
+	--if UnitIsUnit("player", leader) then
+		self:SendCommMessage("GROUP", "FOLLOWREQUEST", "EVENT")
+	--end
 end
 
 function smMultiBoxer:TAXIMAP_OPENED()
@@ -805,6 +806,22 @@ end
 ]]
 
 
+
+
+function smMultiBoxer.OnCommReceive:FOLLOWREQUEST(prefix, distribution, sender, mode)
+	if (sender == UnitName("player")) then return end
+	if not LazyMultibox_IsLeaderUnit(sender) then return end
+	
+	if (mode == "KEY" or mode == "EVENT" and self.db.profile.autofollow) then
+		local leader = LazyMultibox_ReturnLeaderUnit()
+		if CheckInteractDistance(leader, 4) then
+			FollowUnit(leader);
+		else
+			self:SendCommMessage("GROUP", "FOLLOWLOST","(Out of range)")
+		end
+	end
+	
+end
 
 
 function smMultiBoxer.OnCommReceive:ACCEPTTRADE(prefix, distribution, sender)
@@ -1566,4 +1583,9 @@ function smMultiBoxer:SetupContainerFrames(allslots)
 	end
 
 	self.containerframe:Show();	
+end
+
+
+function smMultiBoxer:FollowRequest()
+	self:SendCommMessage("GROUP", "FOLLOWREQUEST", "KEY")
 end

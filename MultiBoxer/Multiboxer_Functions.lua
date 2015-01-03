@@ -42,3 +42,4 @@ function LazyMultibox_IsLeaderUnit(unit_name)
 	end
 	return true
 end
+
