@@ -13,6 +13,8 @@ local tmpSelectAvailableQuestSlave = false
 local tmpDeclineQuestSlave = false
 local tmpLogout = false
 local tmpCancelLogout = false
+local tmpRetrieveCorpse = false
+local tmpAcceptTrade = false
 
 smMultiBoxer = Rock:NewAddon("MultiBoxer",  "LibRockDB-1.0","LibRockEvent-1.0", "LibRockTimer-1.0","LibRockConfig-1.0","LibRockComm-1.0")
 local smMultiBoxer, self = smMultiBoxer, smMultiBoxer
@@ -266,22 +268,41 @@ local optionsTable_args = {
 				},
 				synclogout = {
 					type = "toggle", 
-					name = "Sync logout with the leader",
-					desc = "Sync logout with the leader.",
+					name = "Logout with the leader",
+					desc = "Logout with the leader.",
 					get = function() return self.db.profile.release end,
 					set =  function(v) self.db.profile.release = v end,
 					order = 7,
 				},
 				syncrelease = {
 					type = "toggle", 
-					name = "Sync release spirit with the leader",
-					desc = "Sync release spirit with the leader.",
+					name = "Release spirit with the leader",
+					desc = "Release spirit with the leader.",
 					get = function() return self.db.profile.logout end,
 					set =  function(v) self.db.profile.logout = v end,
 					order = 8,
 				},
+				retrievecorpse = {
+					type = "toggle", 
+					name = "Retrieve corpse  with the leader",
+					desc = "Retrieve corpse  with the leader.",
+					get = function() return self.db.profile.retrieve end,
+					set =  function(v) self.db.profile.retrieve = v end,
+					order = 9,
+				},
+				--[[
+				accepttrade = {
+					type = "toggle", 
+					name = "Auto accept trade with the leader",
+					desc = "Auto accept trade with the leader.",
+					get = function() return self.db.profile.accepttrade end,
+					set =  function(v) self.db.profile.accepttrade = v end,
+					order = 10,
+				},	
+				--]]
+
+
 				
-									
 		},
 	},
 } 
@@ -368,10 +389,11 @@ function smMultiBoxer:OnEnable()
 	self:AddEventListener("QUEST_ACCEPT_CONFIRM")
 			
 	hooksecurefunc("TakeTaxiNode",TakeTaxiNodeHook)
-	
+	--hooksecurefunc("AcceptTrade",AcceptTradeHook)
 	hooksecurefunc("Logout",LogoutHook)	
 	hooksecurefunc("CancelLogout",CancelLogoutHook)
 	hooksecurefunc("RepopMe",RepopMeHook)
+	hooksecurefunc("RetrieveCorpse",RetrieveCorpseHook)
 	
 	
 	hooksecurefunc("SelectGossipOption",SelectGossipOptionHook)	
@@ -389,6 +411,11 @@ function smMultiBoxer:OnEnable()
 	self:AddCommListener("MultiBoxer", "GROUP")
 	self:AddCommListener("MultiBoxer", "WHISPER")
 
+
+	if (self.db.profile.accepttrade == nil) then
+		self.db.profile.accepttrade = true
+	end
+
 	if (self.db.profile.repopme == nil) then
 		self.db.profile.repopme = true
 	end
@@ -401,6 +428,10 @@ function smMultiBoxer:OnEnable()
 		self.db.profile.release = true
 	end	
 	
+	if (self.db.profile.retrieve == nil) then
+		self.db.profile.retrieve = true
+	end	
+
 	if (self.db.profile.texture == nil) then
 		self.db.profile.texture = "Minimalist"
 	end		
@@ -419,6 +450,24 @@ end
 	TakeTaxiNode
 ]]
 
+function AcceptTradeHook() 
+	if tmpAcceptTrade == false then
+		--DEFAULT_CHAT_FRAME:AddMessage("Hook Trade")
+		self:SendCommMessage("GROUP", "ACCEPTTRADE")
+	end
+	tmpAcceptTrade = false	
+end
+
+
+
+function RetrieveCorpseHook() 
+	if tmpRetrieveCorpse == false then
+		--DEFAULT_CHAT_FRAME:AddMessage("Hook Logout")
+		self:SendCommMessage("GROUP", "RETRIEVE")
+	end
+	tmpRetrieveCorpse = false	
+end
+
 function RepopMeHook() 
 	if tmpRepopMe == false then
 		--DEFAULT_CHAT_FRAME:AddMessage("Hook Logout")
@@ -436,7 +485,7 @@ function LogoutHook()
 end
 
 function CancelLogoutHook() 
-	if tmpCancelLogout == false then
+	if tmpCancelLogout == false and not IsShiftKeyDown() then
 		self:SendCommMessage("GROUP", "CANCELLOGOUT")
 	end	
 	tmpCancelLogout = false
@@ -753,6 +802,42 @@ end
 --[[
 	============================================== ADDON CHANNEL COMMUNICATION  ================================================
 ]]
+
+
+
+
+function smMultiBoxer.OnCommReceive:ACCEPTTRADE(prefix, distribution, sender)
+	
+	if (sender == UnitName("player")) then return end
+	if not LazyMultibox_IsLeaderUnit(sender) then return end
+	
+	if (self.db.profile.accepttrade) then
+	--DEFAULT_CHAT_FRAME:AddMessage("ReceiveTrade")
+		tmpAcceptTrade = true
+		--AcceptTrade()
+		TradeFrameTradeButton:Click()
+	end
+end
+
+function smMultiBoxer.OnCommReceive:RETRIEVE(prefix, distribution, sender)
+	if (sender == UnitName("player")) then return end
+	if not LazyMultibox_IsLeaderUnit(sender) then return end
+	
+	if (self.db.profile.retrieve) then
+		tmpRetrieveCorpse = true
+		--RetrieveCorpse()
+		for i=1,STATICPOPUP_NUMDIALOGS do
+			local frame = getglobal("StaticPopup"..i)
+			if frame:IsShown() then
+				DEFAULT_CHAT_FRAME:AddMessage(frame.which)
+				--if frame.which == "CAMP"  then
+					getglobal("StaticPopup"..i.."Button1"):Click();
+				--end
+			end
+		end
+		
+	end
+end
 
 function smMultiBoxer.OnCommReceive:REPOPME(prefix, distribution, sender)
 	if (sender == UnitName("player")) then return end
