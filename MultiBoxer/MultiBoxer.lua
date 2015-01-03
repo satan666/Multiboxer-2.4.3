@@ -15,6 +15,7 @@ local tmpLogout = false
 local tmpCancelLogout = false
 local tmpRetrieveCorpse = false
 local tmpAcceptTrade = false
+local tmpRepopMe = false
 
 smMultiBoxer = Rock:NewAddon("MultiBoxer",  "LibRockDB-1.0","LibRockEvent-1.0", "LibRockTimer-1.0","LibRockConfig-1.0","LibRockComm-1.0")
 local smMultiBoxer, self = smMultiBoxer, smMultiBoxer
@@ -284,8 +285,8 @@ local optionsTable_args = {
 				},
 				retrievecorpse = {
 					type = "toggle", 
-					name = "Retrieve corpse  with the leader",
-					desc = "Retrieve corpse  with the leader.",
+					name = "Retrieve corpse with the leader",
+					desc = "Retrieve corpse with the leader.",
 					get = function() return self.db.profile.retrieve end,
 					set =  function(v) self.db.profile.retrieve = v end,
 					order = 9,
@@ -462,7 +463,7 @@ end
 
 function RetrieveCorpseHook() 
 	if tmpRetrieveCorpse == false then
-		--DEFAULT_CHAT_FRAME:AddMessage("Hook Logout")
+		--DEFAULT_CHAT_FRAME:AddMessage("Hook RETRIEVE")
 		self:SendCommMessage("GROUP", "RETRIEVE")
 	end
 	tmpRetrieveCorpse = false	
@@ -470,7 +471,7 @@ end
 
 function RepopMeHook() 
 	if tmpRepopMe == false then
-		--DEFAULT_CHAT_FRAME:AddMessage("Hook Logout")
+		DEFAULT_CHAT_FRAME:AddMessage("Hook RepopMeHook")
 		self:SendCommMessage("GROUP", "REPOPME")
 	end
 	tmpRepopMe = false	
@@ -822,17 +823,17 @@ end
 function smMultiBoxer.OnCommReceive:RETRIEVE(prefix, distribution, sender)
 	if (sender == UnitName("player")) then return end
 	if not LazyMultibox_IsLeaderUnit(sender) then return end
-	
+
 	if (self.db.profile.retrieve) then
 		tmpRetrieveCorpse = true
 		--RetrieveCorpse()
 		for i=1,STATICPOPUP_NUMDIALOGS do
 			local frame = getglobal("StaticPopup"..i)
 			if frame:IsShown() then
-				DEFAULT_CHAT_FRAME:AddMessage(frame.which)
-				--if frame.which == "CAMP"  then
+				--DEFAULT_CHAT_FRAME:AddMessage(frame.which)
+				if frame.which == "RECOVER_CORPSE"  then
 					getglobal("StaticPopup"..i.."Button1"):Click();
-				--end
+				end
 			end
 		end
 		
@@ -842,10 +843,19 @@ end
 function smMultiBoxer.OnCommReceive:REPOPME(prefix, distribution, sender)
 	if (sender == UnitName("player")) then return end
 	if not LazyMultibox_IsLeaderUnit(sender) then return end
-	
+	--DEFAULT_CHAT_FRAME:AddMessage("OnCommReceive:REPOPME")
 	if (self.db.profile.repopme) then
 		tmpRepopMe = true
-		RepopMe()
+		--RepopMe()
+		for i=1,STATICPOPUP_NUMDIALOGS do
+			local frame = getglobal("StaticPopup"..i)
+			if frame:IsShown() then
+				--DEFAULT_CHAT_FRAME:AddMessage(frame.which)
+				if frame.which == "DEATH"  then
+					getglobal("StaticPopup"..i.."Button1"):Click();
+				end
+			end
+		end
 	end
 end
 
