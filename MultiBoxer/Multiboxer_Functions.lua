@@ -28,11 +28,14 @@ function LazyMultibox_ReturnLeaderUnit()
 		end
 		counter = counter + 1
 	end
-	return false
+	return nil
 end
 
 function LazyMultibox_IsLeaderUnit(unit_name)
 	local leader = LazyMultibox_ReturnLeaderUnit()
+	if not leader then 
+		return nil
+	end
 	local leader_name = UnitName(leader);
 	if (leader_name == nil) then
 		return nil
