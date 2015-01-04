@@ -1,4 +1,6 @@
 <Bindings>
 	<Binding name="FOLLOWLEADER"  header="MULTIBOXER_HEADER">smMultiBoxer:FollowRequest()</Binding>
-
+	<Binding name="LOGOUTGROUP"  header="MULTIBOXER_HEADER">smMultiBoxer:GroupLogoutRequestBind()</Binding>
+	<Binding name="LOGOUTSLAVES"  header="MULTIBOXER_HEADER">smMultiBoxer:SlavesLogoutRequestBind()</Binding>
+	
 </Bindings>

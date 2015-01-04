@@ -20,8 +20,9 @@ local tmpRepopMe = false
 
 
 BINDING_HEADER_MULTIBOXER_HEADER = "Multiboxer";
-BINDING_NAME_FOLLOWLEADER = "Request Slave Follow";
-
+BINDING_NAME_FOLLOWLEADER = "Request Group Follow";
+BINDING_NAME_LOGOUTGROUP = "Request Group Logout";
+BINDING_NAME_LOGOUTSLAVES = "Request Slaves Logout";
 
 smMultiBoxer = Rock:NewAddon("MultiBoxer",  "LibRockDB-1.0","LibRockEvent-1.0", "LibRockTimer-1.0","LibRockConfig-1.0","LibRockComm-1.0")
 local smMultiBoxer, self = smMultiBoxer, smMultiBoxer
@@ -486,7 +487,7 @@ end
 function LogoutHook() 
 	if tmpLogout == false then
 		--DEFAULT_CHAT_FRAME:AddMessage("Hook Logout")
-		self:SendCommMessage("GROUP", "LOGOUT")
+		self:SendCommMessage("GROUP", "LOGOUT", "BUTTON")
 	end
 	tmpLogout = false	
 end
@@ -700,7 +701,16 @@ end
 ]]
 function smMultiBoxer:RESURRECT_REQUEST()
 	if (self.db.profile.autoresurrect) then
-		AcceptResurrect();
+		--AcceptResurrect();
+		for i=1,STATICPOPUP_NUMDIALOGS do
+			local frame = getglobal("StaticPopup"..i)
+			if frame:IsShown() then
+				--DEFAULT_CHAT_FRAME:AddMessage(frame.which)
+				if frame.which == "RESURRECT_NO_TIMER"  then
+					getglobal("StaticPopup"..i.."Button1"):Click();
+				end
+			end
+		end
 	end
 end
 
@@ -806,8 +816,6 @@ end
 ]]
 
 
-
-
 function smMultiBoxer.OnCommReceive:FOLLOWREQUEST(prefix, distribution, sender, mode)
 	if (sender == UnitName("player")) then return end
 	if not LazyMultibox_IsLeaderUnit(sender) then return end
@@ -876,11 +884,11 @@ function smMultiBoxer.OnCommReceive:REPOPME(prefix, distribution, sender)
 	end
 end
 
-function smMultiBoxer.OnCommReceive:LOGOUT(prefix, distribution, sender)
+function smMultiBoxer.OnCommReceive:LOGOUT(prefix, distribution, sender, mode)
 	if (sender == UnitName("player")) then return end
 	if not LazyMultibox_IsLeaderUnit(sender) then return end
 	
-	if (self.db.profile.logout) then
+	if (mode == "KEY" or self.db.profile.logout and mode == "BUTTON") then
 		tmpLogout = true
 		Logout()
 	end
@@ -1241,7 +1249,7 @@ function smMultiBoxer:UpdateSlaveList()
 		return
 	end
 	
-	if (UnitInParty("player")) then
+	if (UnitInParty("player") and LazyMultibox_IsLeaderUnit(UnitName("player"))) then
 		f:Show()
 	else
 		f:Hide()
@@ -1344,7 +1352,7 @@ end
 
 function smMultiBoxer:SetupFrames()
 	-- GUI
-	local versionText = "MultiBoxer v2.6"
+	local versionText = "MultiBoxer Master Frame"
 
 	media:Register("statusbar", "Minimalist", "Interface\\Addons\\Proximo\\Textures\\Minimalist")
 	
@@ -1449,7 +1457,7 @@ function smMultiBoxer:SetupFrames()
 	end		
 	
 	self.mainframe:SetScale(1)
-	self.mainframe:SetAlpha(1)
+	self.mainframe:SetAlpha(0.75)
 	
 	self:RestorePosition()
 	
@@ -1589,3 +1597,19 @@ end
 function smMultiBoxer:FollowRequest()
 	self:SendCommMessage("GROUP", "FOLLOWREQUEST", "KEY")
 end
+
+function smMultiBoxer:GroupLogoutRequestBind()
+	self:SendCommMessage("GROUP", "LOGOUT", "KEY")
+	self:AddTimer(0.25, smMultiBoxer.LogoutRequestExecute)
+end
+
+function smMultiBoxer:SlavesLogoutRequestBind()
+	self:SendCommMessage("GROUP", "LOGOUT", "KEY")
+end
+
+
+function smMultiBoxer:LogoutRequestExecute()
+	Logout()
+end
+
+
