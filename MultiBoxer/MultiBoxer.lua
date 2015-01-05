@@ -192,25 +192,25 @@ local optionsTable_args = {
 					set =  function(v) self.db.profile.autofollow = v end,
 					order = 0,
 				},	
-				--[[
-				mymaster = {
-					type = "string", 
-					name = "Defined Leader used for Automatic follow",
-					desc = "Insert the name of your Main or simple add 'party1' this is the GroupLeader",
-					usage = "...",
-					get = function() return self.db.profile.myleader end,
-					set =  function(v) self.db.profile.myleader = v end,
-					order = 1,
-				},	
-				--]]
+
 				alertfollowproblems = {
 					type = "toggle", 
 					name = "Show Raidwarning if Slave can't follow you",
 					desc = "Show Raidwarning if Slave can't follow you",
 					get = function() return self.db.profile.alertfollowproblems end,
 					set =  function(v) self.db.profile.alertfollowproblems = v end,
-					order = 3,
+					order = 1,
 				},	
+				
+				followstop = {
+					type = "toggle",
+					name = "Play sound when slave stops following you",
+					desc = "Play sound when slave stops following you",
+					get = function() return self.db.profile.soundwarning end,
+					set =  function(v) self.db.profile.soundwarning = v end,
+					order = 2,
+				},	
+				--]]
 		},
 	},
 	mixedsettings = {
@@ -438,6 +438,10 @@ function smMultiBoxer:OnEnable()
 	
 	if (self.db.profile.retrieve == nil) then
 		self.db.profile.retrieve = true
+	end	
+	
+	if (self.db.profile.soundwarning == nil) then
+		self.db.profile.soundwarning = true
 	end	
 
 	if (self.db.profile.texture == nil) then
@@ -1092,6 +1096,7 @@ function smMultiBoxer.OnCommReceive:FOLLOW(prefix, distribution, sender, unit)
 			local b = f.slaves[i];
 			if (b.unitname == sender) then
 				b.followunit = unit
+				b.followunit_previous = true
 			end
 		end		
 	end
@@ -1267,10 +1272,18 @@ function smMultiBoxer:UpdateSlaveList()
 					b.text_info:SetTextColor(220,220,220)
 				else
 					b.text_info:SetTextColor(255,0,0)
+					--DEFAULT_CHAT_FRAME:AddMessage(UnitName("party"..i))
+				end
+				if b.followunit_previous then
+					b.followunit_previous = nil
+					if( self.db.profile.soundwarning ) then
+						self:AddTimer("SoundWarning", 0.25, smMultiBoxer.PlayWarning)
+					end	
 				end
 			else
 				b.text_info:SetText(UnitName("party"..i).." -> "..b.followunit)
 				b.text_info:SetTextColor(0,255,0)
+				self:RemoveTimer("SoundWarning")
 			end
 			b.unitname = UnitName("party"..i);
 			local a = b.text_err:GetAlpha();
@@ -1384,6 +1397,7 @@ function smMultiBoxer:SetupFrames()
 		
 		b.unitname = "unk"
 		b.followunit = nil
+		b.followunit_previous = nil
 		
 		b:SetHeight(20)
 		b:SetWidth(150)
@@ -1610,6 +1624,10 @@ end
 
 function smMultiBoxer:LogoutRequestExecute()
 	Logout()
+end
+
+function smMultiBoxer:PlayWarning()
+	PlaySound("RaidWarning");
 end
 
 
